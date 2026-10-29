@@ -1,0 +1,26 @@
+{
+  "jobs": [
+    {
+      "job": "taxi",
+      "grade": 0
+    },
+    {
+      "job": "mechanic",
+      "grade": 0
+    }
+  ],
+  "documents": [
+    {
+      "item": "id_card",
+      "price": 50
+    },
+    {
+      "item": "driver_license",
+      "price": 250
+    }
+  ],
+  "accounts": [
+    "cash",
+    "bank"
+  ]
+}
