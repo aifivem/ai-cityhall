@@ -1,12 +1,10 @@
-import { AdminWorld, hidePrompt, loadLocaleTexts, menu, notify, onPromptPressed, showPrompt, triggerServerCallback, Zones } from "@aicore-fivem/lib/client";
+import { AdminWorld, loadLocaleTexts, menu, notify, Points, triggerServerCallback } from "@aicore-fivem/lib/client";
 import { record } from "@aicore-fivem/lib/shared";
 import { Locale } from "common";
 import { EVENTS, readHalls } from "common/hall";
 
 const world = new AdminWorld(["halls"]);
 const texts = loadLocaleTexts();
-const BLIP_TEXT = "AIHALL_BLIP";
-AddTextEntry(BLIP_TEXT, "~a~");
 const errorText = (v: unknown, fallback: string): string => {
   const key = typeof record(v).error === "string" ? String(record(v).error) : fallback;
   return texts[key] ?? key;
@@ -32,29 +30,19 @@ async function openHall(id: string): Promise<void> {
   else notify(errorText(result, "HALL_ERR_GONE"), "error");
 }
 
-const zones = new Zones();
-let blips: number[] = [];
+const points = new Points();
 function rebuild(): void {
-  zones.clear();
-  for (const blip of blips) RemoveBlip(blip);
-  blips = [];
+  points.clear();
   for (const hall of readHalls(world.get("halls")).values()) {
-    const id = `hall:${hall.id}`;
-    zones.add(id, { shape: { type: "sphere", center: hall, radius: hall.radius }, interval: 500, onEnter: () => showPrompt(id, Locale("HALL_PROMPT", hall.label)), onExit: () => hidePrompt(id) });
-    if (!hall.blip) continue;
-    const blip = AddBlipForCoord(hall.x, hall.y, hall.z);
-    SetBlipSprite(blip, 419);
-    SetBlipColour(blip, 0);
-    SetBlipScale(blip, 0.7);
-    SetBlipAsShortRange(blip, true);
-    BeginTextCommandSetBlipName(BLIP_TEXT);
-    AddTextComponentSubstringPlayerName(hall.label);
-    EndTextCommandSetBlipName(blip);
-    blips.push(blip);
+    points.add(`hall:${hall.id}`, {
+      coords: hall,
+      label: Locale("HALL_PROMPT", hall.label),
+      icon: "landmark",
+      radius: hall.radius,
+      blip: hall.blip ? { sprite: 419, color: 0, scale: 0.7, label: hall.label } : undefined,
+      onPressed: () => openHall(hall.id),
+    });
   }
 }
 rebuild();
 world.onChange("halls", rebuild);
-onPromptPressed((id) => {
-  if (id.startsWith("hall:")) void openHall(id.slice(5));
-});
