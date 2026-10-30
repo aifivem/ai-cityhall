@@ -1,6 +1,6 @@
-import type { PanelSchema } from "@aicore-fivem/shared"
+import type { PanelSchema } from "@aicore-fivem/shared";
 
-const KEY = "^[a-z0-9_-]{2,48}$"
+const KEY = "^[a-z0-9_-]{2,48}$";
 
 /** ai-cityhall's panel: city halls, jobs anyone may take, documents for sale. */
 export const cityhallSchema: PanelSchema = {
@@ -195,4 +195,4 @@ export const cityhallSchema: PanelSchema = {
       ],
     },
   ],
-}
+};
