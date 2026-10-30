@@ -29,6 +29,7 @@ export interface Hall {
   z: number;
   radius: number;
   blip: boolean;
+  blipStyle: { sprite: number; color: number; scale: number };
 }
 
 export interface Settings {
@@ -38,23 +39,25 @@ export interface Settings {
   accounts: string[];
 }
 
-export function readHalls(raw: unknown): Map<string, Hall> {
-  const out = new Map<string, Hall>();
-  for (const [id, value] of Object.entries(record(raw))) {
-    const v = record(value);
-    const c = record(v.coords);
-    out.set(id, {
-      ped: readPlacePed(v.ped),
-      id,
-      label: str(v.label, id, 48),
-      x: num(c.x, 0),
-      y: num(c.y, 0),
-      z: num(c.z, 0),
-      radius: num(v.radius, 2.5, 1, 20),
-      blip: bool(v.blip, true),
-    });
-  }
-  return out;
+/** One city hall record (`panel.records` / `world.records`). */
+export function readHall(id: string, v: Record<string, unknown>): Hall {
+  const c = record(v.coords);
+  const style = record(v.blipStyle);
+  return {
+    ped: readPlacePed(v.ped),
+    id,
+    label: str(v.label, id, 48),
+    x: num(c.x, 0),
+    y: num(c.y, 0),
+    z: num(c.z, 0),
+    radius: num(v.radius, 2.5, 1, 20),
+    blip: bool(v.blip, true),
+    blipStyle: {
+      sprite: int(style.sprite, 419, 0, 1000),
+      color: int(style.color, 0, 0, 100),
+      scale: num(style.scale, 0.7, 0.3, 2),
+    },
+  };
 }
 
 export function readSettings(raw: unknown): Settings {

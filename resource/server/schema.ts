@@ -24,6 +24,15 @@ export const cityhallSchema: PanelSchema = {
         coords: { type: "vec3" },
         radius: { type: "number", min: 1, max: 20 },
         blip: { type: "bool" },
+        blipStyle: {
+          type: "object",
+          optional: true,
+          fields: {
+            sprite: { type: "number", min: 0, max: 1000, integer: true },
+            color: { type: "number", min: 0, max: 100, integer: true },
+            scale: { type: "number", min: 0.3, max: 2 },
+          },
+        },
       },
     },
     settings: {
@@ -112,6 +121,12 @@ export const cityhallSchema: PanelSchema = {
               unit: "m",
             },
             { widget: "switch", path: "blip", label: "ADMIN_F_BLIP" },
+            {
+              widget: "blip",
+              path: "blipStyle",
+              label: "ADMIN_F_BLIP_STYLE",
+              showIf: { path: "blip", values: [true] },
+            },
           ],
         },
         {

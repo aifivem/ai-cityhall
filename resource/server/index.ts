@@ -3,63 +3,56 @@ import {
   aiLog,
   aiLogChannels,
   inventory,
+  isNear,
   notify,
   onClientCallback,
+  online,
   playersNear,
   resourceExport,
 } from "@aicore-fivem/lib/server";
+import { fail, oneArg, readText } from "@aicore-fivem/lib/shared";
 import { Locale } from "common";
-import { EVENTS, readHalls, readSettings, type Hall } from "common/hall";
+import { EVENTS, readHall, readSettings, type Hall } from "common/hall";
 import { cityhallSchema } from "./schema";
 
 const core = resourceExport("ai-core");
 const panel = new AdminPanel(cityhallSchema);
-/** Panel content, parsed again after every change. */
+const settings = panel.view("settings", readSettings);
 const content = {
-  halls: readHalls(panel.get("halls")),
-  settings: readSettings(panel.get("settings")),
+  halls: panel.records("halls", readHall),
+  get settings() {
+    return settings.value;
+  },
 };
-panel.onChange("halls", () => (content.halls = readHalls(panel.get("halls"))));
-panel.onChange(
-  "settings",
-  () => (content.settings = readSettings(panel.get("settings"))),
-);
 aiLogChannels({ cityhall: {} });
-
-const fail = (error: string) => ({ ok: false as const, error });
 
 function atHall(source: number, id: string): Hall | null {
   const hall = content.halls.get(id);
-  if (!hall) return null;
-  const [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
-  return Math.hypot(x - hall.x, y - hall.y, z - hall.z) <= hall.radius + 2
-    ? hall
-    : null;
+  return hall && isNear(source, hall, hall.radius + 2) ? hall : null;
 }
 
-onClientCallback(
-  EVENTS.offer,
-  { args: ([id]) => (typeof id === "string" ? [id] : null) },
-  (source, id) => {
-    if (!atHall(source, id)) return fail("HALL_ERR_FAR");
-    const defs = core.GetJobDefinitions();
-    return {
-      ok: true,
-      jobs: content.settings.jobs
-        .filter((j) => defs[j.job])
-        .map((j) => ({ job: j.job, label: defs[j.job]?.label ?? j.job })),
-      documents: content.settings.documents,
-    };
-  },
-);
+const text = (v: unknown) => readText(v, 64);
+const twoTexts = ([a, b]: unknown[]): [string, string] | null => {
+  const x = text(a);
+  const y = text(b);
+  return x !== null && y !== null ? [x, y] : null;
+};
+
+onClientCallback(EVENTS.offer, { args: oneArg(text) }, (source, id) => {
+  if (!atHall(source, id)) return fail("HALL_ERR_FAR");
+  const defs = core.GetJobDefinitions();
+  return {
+    ok: true,
+    jobs: content.settings.jobs
+      .filter((j) => defs[j.job])
+      .map((j) => ({ job: j.job, label: defs[j.job]?.label ?? j.job })),
+    documents: content.settings.documents,
+  };
+});
 
 onClientCallback(
   EVENTS.takeJob,
-  {
-    args: ([id, job]) =>
-      typeof id === "string" && typeof job === "string" ? [id, job] : null,
-    lock: true,
-  },
+  { args: twoTexts, lock: true },
   (source, id, job) => {
     if (!atHall(source, id)) return fail("HALL_ERR_FAR");
     const offer = content.settings.jobs.find((j) => j.job === job);
@@ -72,15 +65,11 @@ onClientCallback(
 
 onClientCallback(
   EVENTS.buy,
-  {
-    args: ([id, item]) =>
-      typeof id === "string" && typeof item === "string" ? [id, item] : null,
-    lock: true,
-  },
+  { args: twoTexts, lock: true },
   (source, id, item) => {
     if (!atHall(source, id)) return fail("HALL_ERR_FAR");
     const doc = content.settings.documents.find((d) => d.item === item);
-    const character = core.GetCharacter(source);
+    const character = online.character(source);
     if (!doc || !character) return fail("HALL_ERR_GONE");
     const metadata = {
       name: `${character.firstname} ${character.lastname}`,
@@ -107,6 +96,9 @@ function showDocument(
   source: number,
   item: { name: string; metadata: Record<string, unknown> },
 ): boolean {
+  // A document removed from the panel does nothing (usable items stay registered until a restart).
+  if (!content.settings.documents.some((d) => d.item === item.name))
+    return false;
   const m = item.metadata;
   const text = Locale(
     "HALL_SHOW",
@@ -119,10 +111,16 @@ function showDocument(
   // Documents are kept when shown.
   return false;
 }
+/** Registers every panel document as usable, once per item name: a document added in the panel works at once. */
+const registered = new Set<string>();
 const registerDocs = () => {
-  for (const doc of content.settings.documents)
+  for (const doc of content.settings.documents) {
+    if (registered.has(doc.item)) continue;
+    registered.add(doc.item);
     inventory.registerUsableItem(doc.item, (source, item) =>
       showDocument(source, item),
     );
+  }
 };
 registerDocs();
+panel.onChange("settings", registerDocs);

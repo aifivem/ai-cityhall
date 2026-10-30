@@ -26,6 +26,7 @@
   "ADMIN_H_COORDS": "Stand at the counter and use your position.",
   "ADMIN_F_RADIUS": "Reach",
   "ADMIN_F_BLIP": "Map blip",
+  "ADMIN_F_BLIP_STYLE": "Blip look",
   "ADMIN_TAB_SETTINGS": "Offers",
   "ADMIN_TAB_SETTINGS_DESC": "Jobs anyone may take and documents for sale.",
   "ADMIN_C_JOBS": "Job center",

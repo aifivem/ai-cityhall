@@ -46,8 +46,19 @@ function str(value, fallback, max = 64) {
 function record(value) {
 	return typeof value == "object" && value && !Array.isArray(value) ? value : {};
 }
-// ../../../packages/lib/src/shared/records.ts
-const isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+// ../../../packages/lib/src/shared/strict.ts
+function readText(value, max) {
+	if (typeof value != "string") return null;
+	let text = value.trim();
+	return text ? text.slice(0, max) : null;
+}
+const oneArg = (read) => ([value]) => {
+	let parsed = read(value);
+	return parsed === null ? null : [parsed];
+}, fail = (error) => ({
+	ok: !1,
+	error
+}), isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
 function readRecords(raw, readOne) {
 	let out = new Map();
 	if (!isObject(raw)) return out;
@@ -294,7 +305,7 @@ const CORE = {
 	clientPlayerLoadedEvent: "ai-core:client:playerLoaded",
 	clientPlayerUnloadedEvent: "ai-core:client:playerUnloaded",
 	clientCharacterPortraitEvent: "ai-core:client:characterPortrait",
-	clientCharacterLookEvent: "ai-core:client:characterLook",
+	characterLooksEvent: "ai-core:client:characterLooks",
 	clientPromptPressedEvent: "ai-core:client:promptPressed",
 	clientCacheEvent: "ai-core:client:cache",
 	clientHudVisibleEvent: "ai-core:client:hudVisible",
@@ -365,6 +376,10 @@ function entityCoords(entity) {
 	};
 }
 const coordsOf = (source) => entityCoords(GetPlayerPed(String(source)));
+function isNear(source, point, metres) {
+	let [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source))), dx = x - point.x, dy = y - point.y, dz = z - point.z;
+	return dx * dx + dy * dy + dz * dz <= metres * metres;
+}
 resourceExport(CORE.resource);
 const log$5 = createLogger(GetCurrentResourceName()), gates = new Set();
 on("playerDropped", () => {
@@ -474,7 +489,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$14 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$15 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -488,7 +503,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$14.GetLookupValues(source);
+			list = core$15.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -691,7 +706,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$13 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
+const core$14 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
 function imported(spec, value) {
 	let base = clone(spec.newRecord ?? {}), out = {};
 	for (let name of Object.keys(spec.sections)) {
@@ -715,7 +730,7 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$13.RegisterAdminPanel(this.resource));
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$14.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -849,7 +864,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data), this.views.changed(file, key, value);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$13.AdminPanelChanged({
+		if (core$14.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -887,19 +902,19 @@ function notify(source, text, kind = "info", duration) {
 	emitNet(CORE.clientNotifyEvent, source, notification);
 }
 // ../../../packages/lib/src/server/inventory.ts
-const core$12 = resourceExport(CORE.resource), inventory = {
-	addItem: (inv, item, count = 1, metadata, slot) => core$12.AddItem(inv, item, count, metadata, slot),
-	removeItem: (inv, item, count = 1, metadata, slot) => core$12.RemoveItem(inv, item, count, metadata, slot),
-	getItemCount: (inv, item, metadata) => core$12.GetItemCount(inv, item, metadata),
-	hasItem: (inv, item, count = 1) => core$12.HasItem(inv, item, count),
-	canCarryItem: (inv, item, count = 1, metadata) => core$12.CanCarryItem(inv, item, count, metadata),
-	getItems: (inv) => core$12.GetItems(inv),
-	clearInventory: (inv) => core$12.ClearInventory(inv),
-	registerStash: (name, label, slots, maxWeight, jobs = []) => core$12.RegisterStash(name, label, slots, maxWeight, jobs),
-	openInventory: (source, inv) => core$12.OpenInventory(source, inv),
-	registerUsableItem: (name, handler) => core$12.RegisterUsableItem(name, handler),
-	getItemDefinition: (name) => core$12.GetItemDefinition(name)
-}, core$11 = resourceExport(CORE.resource);
+const core$13 = resourceExport(CORE.resource), inventory = {
+	addItem: (inv, item, count = 1, metadata, slot) => core$13.AddItem(inv, item, count, metadata, slot),
+	removeItem: (inv, item, count = 1, metadata, slot) => core$13.RemoveItem(inv, item, count, metadata, slot),
+	getItemCount: (inv, item, metadata) => core$13.GetItemCount(inv, item, metadata),
+	hasItem: (inv, item, count = 1) => core$13.HasItem(inv, item, count),
+	canCarryItem: (inv, item, count = 1, metadata) => core$13.CanCarryItem(inv, item, count, metadata),
+	getItems: (inv) => core$13.GetItems(inv),
+	clearInventory: (inv) => core$13.ClearInventory(inv),
+	registerStash: (name, label, slots, maxWeight, jobs = []) => core$13.RegisterStash(name, label, slots, maxWeight, jobs),
+	openInventory: (source, inv) => core$13.OpenInventory(source, inv),
+	registerUsableItem: (name, handler) => core$13.RegisterUsableItem(name, handler),
+	getItemDefinition: (name) => core$13.GetItemDefinition(name)
+}, core$12 = resourceExport(CORE.resource);
 var OnlinePlayers = class {
 	players = new Map();
 	onDuty = new Map();
@@ -908,7 +923,7 @@ var OnlinePlayers = class {
 		if (this.started) return;
 		this.started = !0;
 		let load = (source, character) => {
-			this.put(source, character, (core$11.GetJobs(source) ?? []).map((m) => m.job), (core$11.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$11.GetDutyJob(source));
+			this.put(source, character, (core$12.GetJobs(source) ?? []).map((m) => m.job), (core$12.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$12.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => {
 			let player = this.players.get(source);
@@ -917,8 +932,8 @@ var OnlinePlayers = class {
 			let player = this.players.get(source);
 			player && (player.gangs = gangs.map((m) => m.gang));
 		}), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$11.GetLoadedSources()) {
-			let character = core$11.GetCharacter(source);
+		for (let source of core$12.GetLoadedSources()) {
+			let character = core$12.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -961,10 +976,10 @@ var OnlinePlayers = class {
 		return this.start(), this.onDuty.get(job) ?? EMPTY;
 	}
 };
-const EMPTY = new Set();
-new OnlinePlayers(), resourceExport(CORE.resource);
+const EMPTY = new Set(), online = new OnlinePlayers();
+resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/proximity.ts
-const core$9 = resourceExport(CORE.resource);
+const core$10 = resourceExport(CORE.resource);
 function within(point, radius, candidates) {
 	let out = [];
 	for (let source of candidates) {
@@ -974,7 +989,7 @@ function within(point, radius, candidates) {
 	return out;
 }
 function playersNear(source, radius) {
-	return within(coordsOf(source), radius, [source, ...core$9.GetPlayersInScope(source)]);
+	return within(coordsOf(source), radius, [source, ...core$10.GetPlayersInScope(source)]);
 }
 createLogger(GetCurrentResourceName());
 // ../../../packages/lib/src/server/command.ts
@@ -1004,7 +1019,7 @@ createLogger(resource), new class {
 			if (name === resource) for (let command of this.list) for (let n of command.info.names) emitNet("chat:removeSuggestion", -1, `/${n}`);
 		});
 	}
-}(), createLogger(GetCurrentResourceName()), createLogger("aicore-lib"), IsDuplicityVersion(), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
+}(), createLogger(GetCurrentResourceName()), createLogger("aicore-lib"), IsDuplicityVersion(), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // resource/common/locale.ts
 const Locale = createLocale();
 GetCurrentResourceName(), IsDuplicityVersion();
@@ -1014,22 +1029,23 @@ const EVENTS = {
 	takeJob: "ai-cityhall:takeJob",
 	buy: "ai-cityhall:buy"
 };
-function readHalls(raw) {
-	let out = new Map();
-	for (let [id, value] of Object.entries(record(raw))) {
-		let v = record(value), c = record(v.coords);
-		out.set(id, {
-			ped: readPlacePed(v.ped),
-			id,
-			label: str(v.label, id, 48),
-			x: num(c.x, 0),
-			y: num(c.y, 0),
-			z: num(c.z, 0),
-			radius: num(v.radius, 2.5, 1, 20),
-			blip: bool(v.blip, !0)
-		});
-	}
-	return out;
+function readHall(id, v) {
+	let c = record(v.coords), style = record(v.blipStyle);
+	return {
+		ped: readPlacePed(v.ped),
+		id,
+		label: str(v.label, id, 48),
+		x: num(c.x, 0),
+		y: num(c.y, 0),
+		z: num(c.z, 0),
+		radius: num(v.radius, 2.5, 1, 20),
+		blip: bool(v.blip, !0),
+		blipStyle: {
+			sprite: int(style.sprite, 419, 0, 1e3),
+			color: int(style.color, 0, 0, 100),
+			scale: num(style.scale, .7, .3, 2)
+		}
+	};
 }
 function readSettings(raw) {
 	let s = record(raw), rows = (v) => Array.isArray(v) ? v.map(record) : [], accounts = Array.isArray(s.accounts) ? s.accounts.filter((a) => typeof a == "string") : [];
@@ -1077,7 +1093,30 @@ const cityhallSchema = {
 					min: 1,
 					max: 20
 				},
-				blip: { type: "bool" }
+				blip: { type: "bool" },
+				blipStyle: {
+					type: "object",
+					optional: !0,
+					fields: {
+						sprite: {
+							type: "number",
+							min: 0,
+							max: 1e3,
+							integer: !0
+						},
+						color: {
+							type: "number",
+							min: 0,
+							max: 100,
+							integer: !0
+						},
+						scale: {
+							type: "number",
+							min: .3,
+							max: 2
+						}
+					}
+				}
 			}
 		},
 		settings: {
@@ -1177,6 +1216,15 @@ const cityhallSchema = {
 					widget: "switch",
 					path: "blip",
 					label: "ADMIN_F_BLIP"
+				},
+				{
+					widget: "blip",
+					path: "blipStyle",
+					label: "ADMIN_F_BLIP_STYLE",
+					showIf: {
+						path: "blip",
+						values: [!0]
+					}
 				}
 			]
 		}, {
@@ -1257,22 +1305,22 @@ const cityhallSchema = {
 			}]
 		}]
 	}]
-}, core = resourceExport("ai-core"), panel = new AdminPanel(cityhallSchema), content = {
-	halls: readHalls(panel.get("halls")),
-	settings: readSettings(panel.get("settings"))
+}, core = resourceExport("ai-core"), panel = new AdminPanel(cityhallSchema), settings = panel.view("settings", readSettings), content = {
+	halls: panel.records("halls", readHall),
+	get settings() {
+		return settings.value;
+	}
 };
-panel.onChange("halls", () => content.halls = readHalls(panel.get("halls"))), panel.onChange("settings", () => content.settings = readSettings(panel.get("settings"))), aiLogChannels({ cityhall: {} });
-const fail = (error) => ({
-	ok: !1,
-	error
-});
+aiLogChannels({ cityhall: {} });
 function atHall(source, id) {
 	let hall = content.halls.get(id);
-	if (!hall) return null;
-	let [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
-	return Math.hypot(x - hall.x, y - hall.y, z - hall.z) <= hall.radius + 2 ? hall : null;
+	return hall && isNear(source, hall, hall.radius + 2) ? hall : null;
 }
-onClientCallback(EVENTS.offer, { args: ([id]) => typeof id == "string" ? [id] : null }, (source, id) => {
+const text = (v) => readText(v, 64), twoTexts = ([a, b]) => {
+	let x = text(a), y = text(b);
+	return x !== null && y !== null ? [x, y] : null;
+};
+onClientCallback(EVENTS.offer, { args: oneArg(text) }, (source, id) => {
 	if (!atHall(source, id)) return fail("HALL_ERR_FAR");
 	let defs = core.GetJobDefinitions();
 	return {
@@ -1284,7 +1332,7 @@ onClientCallback(EVENTS.offer, { args: ([id]) => typeof id == "string" ? [id] : 
 		documents: content.settings.documents
 	};
 }), onClientCallback(EVENTS.takeJob, {
-	args: ([id, job]) => typeof id == "string" && typeof job == "string" ? [id, job] : null,
+	args: twoTexts,
 	lock: !0
 }, (source, id, job) => {
 	if (!atHall(source, id)) return fail("HALL_ERR_FAR");
@@ -1294,11 +1342,11 @@ onClientCallback(EVENTS.offer, { args: ([id]) => typeof id == "string" ? [id] : 
 		metadata: { job }
 	}), { ok: !0 }) : fail("HALL_ERR_JOB");
 }), onClientCallback(EVENTS.buy, {
-	args: ([id, item]) => typeof id == "string" && typeof item == "string" ? [id, item] : null,
+	args: twoTexts,
 	lock: !0
 }, (source, id, item) => {
 	if (!atHall(source, id)) return fail("HALL_ERR_FAR");
-	let doc = content.settings.documents.find((d) => d.item === item), character = core.GetCharacter(source);
+	let doc = content.settings.documents.find((d) => d.item === item), character = online.character(source);
 	if (!doc || !character) return fail("HALL_ERR_GONE");
 	let metadata = {
 		name: `${character.firstname} ${character.lastname}`,
@@ -1309,10 +1357,12 @@ onClientCallback(EVENTS.offer, { args: ([id]) => typeof id == "string" ? [id] : 
 	return inventory.canCarryItem(source, item, 1, metadata) ? doc.price > 0 && !content.settings.accounts.some((a) => core.RemoveMoney(source, a, doc.price, `cityhall:${item}`)) ? fail("HALL_ERR_MONEY") : (inventory.addItem(source, item, 1, metadata), { ok: !0 }) : fail("HALL_ERR_SPACE");
 });
 function showDocument(source, item) {
+	if (!content.settings.documents.some((d) => d.item === item.name)) return !1;
 	let m = item.metadata, text = Locale("HALL_SHOW", String(m.name ?? "?"), String(m.birthdate ?? "?"), String(m.citizenid ?? "?"));
 	for (let target of playersNear(source, 3)) notify(target, text, "info", 8e3);
 	return !1;
 }
-(() => {
-	for (let doc of content.settings.documents) inventory.registerUsableItem(doc.item, (source, item) => showDocument(source, item));
-})();
+const registered = new Set(), registerDocs = () => {
+	for (let doc of content.settings.documents) registered.has(doc.item) || (registered.add(doc.item), inventory.registerUsableItem(doc.item, (source, item) => showDocument(source, item)));
+};
+registerDocs(), panel.onChange("settings", registerDocs);
