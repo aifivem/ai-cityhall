@@ -58,7 +58,35 @@ const oneArg = (read) => ([value]) => {
 }, fail = (error) => ({
 	ok: !1,
 	error
-}), isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+}), BLIP_STYLE_FIELDS = {
+	sprite: {
+		type: "number",
+		min: 0,
+		max: 1e3,
+		integer: !0
+	},
+	color: {
+		type: "number",
+		min: 0,
+		max: 100,
+		integer: !0
+	},
+	scale: {
+		type: "number",
+		min: .3,
+		max: 2
+	}
+};
+function readBlipStyle(value, fallback) {
+	let v = record(value);
+	return {
+		sprite: int(v.sprite, fallback.sprite, 0, 1e3),
+		color: int(v.color, fallback.color, 0, 100),
+		scale: num(v.scale, fallback.scale, .3, 2)
+	};
+}
+// ../../../packages/lib/src/shared/records.ts
+const isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
 function readRecords(raw, readOne) {
 	let out = new Map();
 	if (!isObject(raw)) return out;
@@ -1005,6 +1033,10 @@ var OnlinePlayers = class {
 	character(source) {
 		return this.start(), this.players.get(source)?.character ?? null;
 	}
+	name(source, options = {}) {
+		let c = this.character(source);
+		return c ? `${c.firstname} ${c.lastname}` : options.fallback === !1 ? "" : GetPlayerName(String(source));
+	}
 	jobs(source) {
 		return this.start(), this.players.get(source)?.jobNames ?? [];
 	}
@@ -1191,11 +1223,11 @@ function readHall(id, v) {
 		z: num(c.z, 0),
 		radius: num(v.radius, 2.5, 1, 20),
 		blip: bool(v.blip, !0),
-		blipStyle: {
-			sprite: int(style.sprite, 419, 0, 1e3),
-			color: int(style.color, 0, 0, 100),
-			scale: num(style.scale, .7, .3, 2)
-		}
+		blipStyle: readBlipStyle(style, {
+			sprite: 419,
+			color: 0,
+			scale: .7
+		})
 	};
 }
 function readSettings(raw) {
@@ -1248,25 +1280,7 @@ const cityhallSchema = {
 				blipStyle: {
 					type: "object",
 					optional: !0,
-					fields: {
-						sprite: {
-							type: "number",
-							min: 0,
-							max: 1e3,
-							integer: !0
-						},
-						color: {
-							type: "number",
-							min: 0,
-							max: 100,
-							integer: !0
-						},
-						scale: {
-							type: "number",
-							min: .3,
-							max: 2
-						}
-					}
+					fields: BLIP_STYLE_FIELDS
 				}
 			}
 		},

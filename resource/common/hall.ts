@@ -2,10 +2,11 @@ import {
   bool,
   int,
   num,
+  type PlacePed,
+  readBlipStyle,
+  readPlacePed,
   record,
   str,
-  readPlacePed,
-  type PlacePed,
 } from "@aicore-fivem/lib/shared";
 
 /** ai-cityhall's contracts and panel content. No natives. */
@@ -52,11 +53,7 @@ export function readHall(id: string, v: Record<string, unknown>): Hall {
     z: num(c.z, 0),
     radius: num(v.radius, 2.5, 1, 20),
     blip: bool(v.blip, true),
-    blipStyle: {
-      sprite: int(style.sprite, 419, 0, 1000),
-      color: int(style.color, 0, 0, 100),
-      scale: num(style.scale, 0.7, 0.3, 2),
-    },
+    blipStyle: readBlipStyle(style, { sprite: 419, color: 0, scale: 0.7 }),
   };
 }
 
