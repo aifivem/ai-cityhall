@@ -12,7 +12,7 @@ const errorText = (v: unknown, fallback: string): string => {
   return texts[key] ?? key;
 };
 
-/** City hall: ai-core's menu with the job center and the documents (item labels from ai-inventory's item list). */
+/** City hall: ai-core's menu with the job center and the documents (labels from this script's lang file). */
 async function openHall(id: string): Promise<void> {
   const offer = record(await triggerServerCallback(EVENTS.offer, [id]).catch(() => null));
   if (offer.ok !== true) return notify(errorText(offer, "HALL_ERR_FAR"), "error");

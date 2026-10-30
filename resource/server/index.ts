@@ -1,4 +1,4 @@
-import { AdminPanel, aiLog, aiLogChannels, notify, onClientCallback, optionalExport, resourceExport } from "@aicore-fivem/lib/server";
+import { AdminPanel, aiLog, aiLogChannels, inventory, notify, onClientCallback, resourceExport } from "@aicore-fivem/lib/server";
 import { Locale } from "common";
 import { EVENTS, readHalls, readSettings, type Hall } from "common/hall";
 import { cityhallSchema } from "./schema";
@@ -50,12 +50,11 @@ onClientCallback(
     if (!atHall(source, id)) return fail("HALL_ERR_FAR");
     const doc = content.settings.documents.find((d) => d.item === item);
     const character = core.GetCharacter(source);
-    const inventory = optionalExport("ai-inventory");
-    if (!doc || !character || !inventory) return fail("HALL_ERR_GONE");
+    if (!doc || !character) return fail("HALL_ERR_GONE");
     const metadata = { name: `${character.firstname} ${character.lastname}`, birthdate: character.birthdate, citizenid: character.citizenid, sex: character.sex };
-    if (!inventory.CanCarryItem(source, item, 1, metadata)) return fail("HALL_ERR_SPACE");
+    if (!inventory.canCarryItem(source, item, 1, metadata)) return fail("HALL_ERR_SPACE");
     if (doc.price > 0 && !content.settings.accounts.some((a) => core.RemoveMoney(source, a, doc.price, `cityhall:${item}`))) return fail("HALL_ERR_MONEY");
-    inventory.AddItem(source, item, 1, metadata);
+    inventory.addItem(source, item, 1, metadata);
     return { ok: true };
   },
 );
@@ -73,8 +72,6 @@ function showDocument(source: number, item: { name: string; metadata: Record<str
   return false;
 }
 const registerDocs = () => {
-  const inventory = optionalExport("ai-inventory");
-  for (const doc of content.settings.documents) inventory?.RegisterUsableItem(doc.item, (source, item) => showDocument(source, item));
+  for (const doc of content.settings.documents) inventory.registerUsableItem(doc.item, (source, item) => showDocument(source, item));
 };
 registerDocs();
-on("onServerResourceStart", (resource: string) => resource === "ai-inventory" && registerDocs());
