@@ -1,4 +1,5 @@
 {
+  "$schema": "./schemas/halls.schema.json",
   "city_hall": {
     "label": "City Hall",
     "coords": {

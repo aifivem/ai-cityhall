@@ -7,6 +7,7 @@
   "author": {
     "name": "ai-core"
   },
+  "repository": "github:TGIANN/ai-cityhall",
   "type": "module",
   "fxDependencies": [
     "/onesync",

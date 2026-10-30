@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-cityhall/data/settings.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    },
+    "jobs": {
+      "description": "Jobs",
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "description": "Job",
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 32,
+            "pattern": "^[a-z0-9_]{2,32}$"
+          },
+          "grade": {
+            "description": "Grade",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "job",
+          "grade"
+        ]
+      }
+    },
+    "documents": {
+      "description": "Documents",
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "description": "Item",
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 48,
+            "pattern": "^[a-z0-9_-]{2,48}$"
+          },
+          "price": {
+            "description": "Price",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          }
+        },
+        "required": [
+          "item",
+          "price"
+        ]
+      }
+    },
+    "accounts": {
+      "description": "Paid from: Money accounts tried in order.",
+      "type": "array",
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 32,
+        "pattern": "^[a-z0-9_]{2,32}$"
+      }
+    }
+  },
+  "required": [
+    "jobs",
+    "documents",
+    "accounts"
+  ]
+}
