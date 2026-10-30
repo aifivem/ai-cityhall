@@ -1,6 +1,6 @@
 # ai-cityhall
 
-City hall counters: the job center (public jobs at a start grade, through ai-core's `SetJob`) and documents (items with the holder's name, birth date and citizen id; using one shows it to everyone within 3 m). Uses ai-core's shared menu, no NUI of its own. Depends on ai-core; documents go through the active inventory through ai-core's inventory layer (lib `inventory`). Research: `docs/research/ai-cityhall.md`.
+City hall counters: the job center (public jobs at a start grade, through ai-core's `SetJob`) and documents (items with the holder's name, birth date and citizen id; using one shows it to everyone within 3 m). Uses ai-core's shared menu, no NUI of its own. Depends on ai-core; documents go through the active inventory through ai-core's inventory layer (lib `inventory`).
 
 ## Decisions
 
