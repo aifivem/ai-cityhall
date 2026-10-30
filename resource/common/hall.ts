@@ -1,4 +1,4 @@
-import { bool, int, num, record, str } from "@aicore-fivem/lib/shared";
+import { bool, int, num, record, str, readPlacePed, type PlacePed } from "@aicore-fivem/lib/shared";
 
 /** ai-cityhall's contracts and panel content. No natives. */
 
@@ -12,6 +12,8 @@ export const EVENTS = {
 } as const;
 
 export interface Hall {
+  /** NPC standing at the place (panel), null for none. */
+  ped: PlacePed | null;
   id: string;
   label: string;
   x: number;
@@ -34,6 +36,7 @@ export function readHalls(raw: unknown): Map<string, Hall> {
     const v = record(value);
     const c = record(v.coords);
     out.set(id, {
+      ped: readPlacePed(v.ped),
       id,
       label: str(v.label, id, 48),
       x: num(c.x, 0),

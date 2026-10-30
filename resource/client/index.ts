@@ -71,6 +71,7 @@ function rebuild(): void {
   points.clear();
   for (const hall of readHalls(world.get("halls")).values()) {
     points.add(`hall:${hall.id}`, {
+      ped: hall.ped ?? undefined,
       coords: hall,
       label: Locale("HALL_PROMPT", hall.label),
       icon: "landmark",

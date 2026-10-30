@@ -1,3 +1,4 @@
+import { PLACE_PED_SPEC, placePedFields } from "@aicore-fivem/lib/shared";
 import type { PanelSchema } from "@aicore-fivem/shared";
 
 const KEY = "^[a-z0-9_-]{2,48}$";
@@ -18,6 +19,7 @@ export const cityhallSchema: PanelSchema = {
         blip: true,
       },
       sections: {
+        ped: PLACE_PED_SPEC,
         label: { type: "text", min: 1, max: 48 },
         coords: { type: "vec3" },
         radius: { type: "number", min: 1, max: 20 },
@@ -111,6 +113,12 @@ export const cityhallSchema: PanelSchema = {
             },
             { widget: "switch", path: "blip", label: "ADMIN_F_BLIP" },
           ],
+        },
+        {
+          icon: "user",
+          title: "ADMIN_C_PED",
+          desc: "ADMIN_C_PED_DESC",
+          fields: placePedFields(),
         },
       ],
     },
