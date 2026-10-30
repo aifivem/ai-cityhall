@@ -40,12 +40,12 @@ const twoTexts = ([a, b]: unknown[]): [string, string] | null => {
 
 onClientCallback(EVENTS.offer, { args: oneArg(text) }, (source, id) => {
   if (!atHall(source, id)) return fail("HALL_ERR_FAR");
-  const defs = core.GetJobDefinitions();
   return {
     ok: true,
-    jobs: content.settings.jobs
-      .filter((j) => defs[j.job])
-      .map((j) => ({ job: j.job, label: defs[j.job]?.label ?? j.job })),
+    jobs: content.settings.jobs.flatMap((j) => {
+      const def = core.GetJobDefinition(j.job);
+      return def ? [{ job: j.job, label: def.label }] : [];
+    }),
     documents: content.settings.documents,
   };
 });
@@ -56,7 +56,7 @@ onClientCallback(
   (source, id, job) => {
     if (!atHall(source, id)) return fail("HALL_ERR_FAR");
     const offer = content.settings.jobs.find((j) => j.job === job);
-    if (!offer || !core.GetJobDefinitions()[job]) return fail("HALL_ERR_GONE");
+    if (!offer || !core.GetJobDefinition(job)) return fail("HALL_ERR_GONE");
     if (!core.SetJob(source, job, offer.grade)) return fail("HALL_ERR_JOB");
     aiLog("cityhall", `took the job ${job}`, { source, metadata: { job } });
     return { ok: true };

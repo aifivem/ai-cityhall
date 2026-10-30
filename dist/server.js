@@ -299,6 +299,8 @@ const CORE = {
 	dutyChangedEvent: "ai-core:dutyChanged",
 	gangsChangedEvent: "ai-core:gangsChanged",
 	activeGangChangedEvent: "ai-core:activeGangChanged",
+	metaChangedEvent: "ai-core:metaChanged",
+	definitionsChangedEvent: "ai-core:definitionsChanged",
 	characterScreenEvent: "ai-core:characterScreen",
 	inventoryChangedEvent: "ai-core:inventoryChanged",
 	itemUsedEvent: "ai-core:itemUsed",
@@ -310,6 +312,9 @@ const CORE = {
 	clientPromptPressedEvent: "ai-core:client:promptPressed",
 	clientCacheEvent: "ai-core:client:cache",
 	clientHudVisibleEvent: "ai-core:client:hudVisible",
+	clientWorldSyncEvent: "ai-core:client:worldSync",
+	clientCancelProgressEvent: "ai-core:client:cancelProgress",
+	clientDefinitionsEvent: "ai-core:client:definitions",
 	vehicleTypeCallback: "ai-core:vehicleType",
 	interactionStateKey: "ai:interaction",
 	charactersCallback: "ai-core:characters",
@@ -785,7 +790,10 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$14.RegisterAdminPanel(this.resource));
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
+			count: 4,
+			windowMs: 1e4
+		} }), setImmediate(() => core$14.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -1091,8 +1099,9 @@ var Group = class {
 	get front() {
 		return this.dues[this.head] ?? 0;
 	}
+	compactAt = 64;
 	push(job, due) {
-		this.count > this.mask && this.grow();
+		this.count >= this.compactAt && this.compact(), this.count > this.mask && this.grow();
 		let i = this.head + this.count & this.mask;
 		this.jobs[i] = job, this.gens[i] = job.gen, this.dues[i] = due, this.count++;
 	}
@@ -1105,6 +1114,17 @@ var Group = class {
 			let next = due + this.interval;
 			next <= now && (next = now + this.interval), this.push(job, next), job.call();
 		}
+	}
+	compact() {
+		let kept = 0;
+		for (let n = 0; n < this.count; n++) {
+			let i = this.head + n & this.mask, job = this.jobs[i];
+			if (!job || job.gen !== this.gens[i]) continue;
+			let k = this.head + kept & this.mask;
+			this.jobs[k] = job, this.gens[k] = this.gens[i] ?? 0, this.dues[k] = this.dues[i] ?? 0, kept++;
+		}
+		for (let n = kept; n < this.count; n++) this.jobs[this.head + n & this.mask] = void 0;
+		this.count = kept, this.compactAt = Math.max(64, kept * 2);
 	}
 	grow() {
 		let size = (this.mask + 1) * 2, jobs = Array(size), gens = Array(size).fill(0), dues = Array(size).fill(0);
@@ -1451,24 +1471,23 @@ const text = (v) => readText(v, 64), twoTexts = ([a, b]) => {
 	let x = text(a), y = text(b);
 	return x !== null && y !== null ? [x, y] : null;
 };
-onClientCallback(EVENTS.offer, { args: oneArg(text) }, (source, id) => {
-	if (!atHall(source, id)) return fail("HALL_ERR_FAR");
-	let defs = core.GetJobDefinitions();
-	return {
-		ok: !0,
-		jobs: content.settings.jobs.filter((j) => defs[j.job]).map((j) => ({
+onClientCallback(EVENTS.offer, { args: oneArg(text) }, (source, id) => atHall(source, id) ? {
+	ok: !0,
+	jobs: content.settings.jobs.flatMap((j) => {
+		let def = core.GetJobDefinition(j.job);
+		return def ? [{
 			job: j.job,
-			label: defs[j.job]?.label ?? j.job
-		})),
-		documents: content.settings.documents
-	};
-}), onClientCallback(EVENTS.takeJob, {
+			label: def.label
+		}] : [];
+	}),
+	documents: content.settings.documents
+} : fail("HALL_ERR_FAR")), onClientCallback(EVENTS.takeJob, {
 	args: twoTexts,
 	lock: !0
 }, (source, id, job) => {
 	if (!atHall(source, id)) return fail("HALL_ERR_FAR");
 	let offer = content.settings.jobs.find((j) => j.job === job);
-	return !offer || !core.GetJobDefinitions()[job] ? fail("HALL_ERR_GONE") : core.SetJob(source, job, offer.grade) ? (aiLog("cityhall", `took the job ${job}`, {
+	return !offer || !core.GetJobDefinition(job) ? fail("HALL_ERR_GONE") : core.SetJob(source, job, offer.grade) ? (aiLog("cityhall", `took the job ${job}`, {
 		source,
 		metadata: { job }
 	}), { ok: !0 }) : fail("HALL_ERR_JOB");
