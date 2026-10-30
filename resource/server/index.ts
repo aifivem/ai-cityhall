@@ -1,4 +1,4 @@
-import { AdminPanel, aiLog, aiLogChannels, inventory, notify, onClientCallback, resourceExport } from "@aicore-fivem/lib/server";
+import { AdminPanel, aiLog, aiLogChannels, inventory, notify, onClientCallback, playersNear, resourceExport } from "@aicore-fivem/lib/server";
 import { Locale } from "common";
 import { EVENTS, readHalls, readSettings, type Hall } from "common/hall";
 import { cityhallSchema } from "./schema";
@@ -63,11 +63,7 @@ onClientCallback(
 function showDocument(source: number, item: { name: string; metadata: Record<string, unknown> }): boolean {
   const m = item.metadata;
   const text = Locale("HALL_SHOW", String(m.name ?? "?"), String(m.birthdate ?? "?"), String(m.citizenid ?? "?"));
-  const [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
-  for (const target of core.GetLoadedSources()) {
-    const [tx = 0, ty = 0, tz = 0] = GetEntityCoords(GetPlayerPed(String(target)));
-    if (Math.hypot(tx - x, ty - y, tz - z) <= 3) notify(target, text, "info", 8000);
-  }
+  for (const target of playersNear(source, 3)) notify(target, text, "info", 8000);
   // Documents are kept when shown.
   return false;
 }
