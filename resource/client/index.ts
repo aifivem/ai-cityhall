@@ -10,6 +10,10 @@ import {
 import { record, RecordObjects } from "@aicore-fivem/lib/shared";
 import { Locale } from "common";
 import { EVENTS, readHall } from "common/hall";
+import { NUI_LAYER } from "@aicore-fivem/shared";
+
+// Stacking among NUI pages (`NUI_LAYER`): set at start, not left to load order.
+SetNuiZindex(NUI_LAYER.screen);
 
 const world = new AdminWorld(["halls"]);
 const texts = loadLocaleTexts();
