@@ -17,8 +17,9 @@
     "lint": "oxlint --ignore-pattern \"dist/**\"",
     "format": "prettier --write .",
     "dev": "bun tsdown -- --watch",
-    "build": "bun tsdown -- && aicore-client-errors dist/client.js",
-    "typecheck": "tsc --noEmit -p resource/client/tsconfig.json && tsc --noEmit -p resource/server/tsconfig.json"
+    "build": "bun run --cwd web build && bun tsdown -- && aicore-client-errors dist/client.js",
+    "typecheck": "tsc --noEmit -p resource/client/tsconfig.json && tsc --noEmit -p resource/server/tsconfig.json",
+    "webdev": "bun --cwd web vite"
   },
   "dependencies": {
     "@aicore-fivem/lib": "^0.1.0",

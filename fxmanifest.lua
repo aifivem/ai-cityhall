@@ -10,7 +10,7 @@ node_version '22'
 
 client_script 'dist/client.js'
 server_script 'dist/server.js'
-
+ui_page 'dist/web/index.html'
 
 dependencies {
 	'/onesync',
@@ -19,6 +19,11 @@ dependencies {
 
 files {
 	'locales/*.json',
+	'dist/web/assets/*.js',
+	'dist/web/assets/*.css',
+	'dist/web/assets/*.woff',
+	'dist/web/assets/*.woff2',
+	'dist/web/*.html',
 	'data/halls.json',
 	'data/settings.json',
 }

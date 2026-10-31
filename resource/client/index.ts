@@ -1,3 +1,4 @@
+import "./card";
 import {
   AdminWorld,
   callAction,
@@ -6,12 +7,11 @@ import {
   notify,
   Points,
 } from "@aicore-fivem/lib/client";
-import { record } from "@aicore-fivem/lib/shared";
+import { record, RecordObjects } from "@aicore-fivem/lib/shared";
 import { Locale } from "common";
 import { EVENTS, readHall } from "common/hall";
 
 const world = new AdminWorld(["halls"]);
-const halls = world.records("halls", readHall);
 const texts = loadLocaleTexts();
 
 /** City hall: ai-core's menu with the job center and the documents (labels from this script's lang file). */
@@ -60,19 +60,16 @@ async function openHall(id: string): Promise<void> {
 }
 
 const points = new Points();
-function rebuild(): void {
-  points.clear();
-  for (const hall of halls.values()) {
-    points.add(`hall:${hall.id}`, {
-      ped: hall.ped ?? undefined,
-      coords: hall,
-      label: Locale("HALL_PROMPT", hall.label),
-      icon: "landmark",
-      radius: hall.radius,
-      blip: hall.blip ? { ...hall.blipStyle, label: hall.label } : undefined,
-      onPressed: () => openHall(hall.id),
-    });
-  }
-}
-rebuild();
-world.onChange("halls", rebuild);
+/** One point per hall; an edited hall rebuilds only its own point. */
+new RecordObjects(world, "halls", readHall, (id, hall) => {
+  points.add(`hall:${id}`, {
+    ped: hall.ped ?? undefined,
+    coords: hall,
+    label: Locale("HALL_PROMPT", hall.label),
+    icon: "landmark",
+    radius: hall.radius,
+    blip: hall.blip ? { ...hall.blipStyle, label: hall.label } : undefined,
+    onPressed: () => openHall(id),
+  });
+  return () => points.remove(`hall:${id}`);
+});

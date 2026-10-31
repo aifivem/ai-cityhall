@@ -2,11 +2,31 @@
   "$schema": "./schemas/settings.schema.json",
   "jobs": [
     {
+      "job": "trucker",
+      "grade": 0
+    },
+    {
       "job": "taxi",
       "grade": 0
     },
     {
-      "job": "mechanic",
+      "job": "tow",
+      "grade": 0
+    },
+    {
+      "job": "reporter",
+      "grade": 0
+    },
+    {
+      "job": "garbage",
+      "grade": 0
+    },
+    {
+      "job": "bus",
+      "grade": 0
+    },
+    {
+      "job": "hotdog",
       "grade": 0
     }
   ],
@@ -23,5 +43,6 @@
   "accounts": [
     "cash",
     "bank"
-  ]
+  ],
+  "cardSeconds": 8
 }

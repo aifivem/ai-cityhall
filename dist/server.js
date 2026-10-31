@@ -52,13 +52,11 @@ function readText(value, max) {
 	let text = value.trim();
 	return text ? text.slice(0, max) : null;
 }
-const oneArg = (read) => ([value]) => {
-	let parsed = read(value);
-	return parsed === null ? null : [parsed];
-}, fail = (error) => ({
+// ../../../packages/lib/src/shared/action.ts
+const fail = (error) => ({
 	ok: !1,
 	error
-}), BLIP_STYLE_FIELDS = {
+}), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, BLIP_STYLE_FIELDS = {
 	sprite: {
 		type: "number",
 		min: 0,
@@ -135,13 +133,6 @@ var FileViews = class {
 		parsed === null ? this.map.delete(key) : this.map.set(key, parsed);
 	}
 };
-// ../../../packages/lib/src/shared/lang.ts
-function formatText(template, args) {
-	return template.replace(/\{(\d+)\}/g, (match, index) => {
-		let value = args[Number(index)];
-		return value === void 0 ? match : String(value);
-	});
-}
 // ../../../packages/lib/src/shared/placePed.ts
 const isRecord$1 = (v) => typeof v == "object" && !!v && !Array.isArray(v), SCENARIOS = [
 	"",
@@ -354,6 +345,7 @@ const CORE = {
 }, ADMIN = {
 	ace: "ai.admin",
 	openCallback: "ai-core:admin:open",
+	panelDataCallback: "ai-core:admin:panelData",
 	applyCallback: "ai-core:admin:apply",
 	closeEvent: "ai-core:admin:close",
 	showEvent: "ai-core:admin:show",
@@ -361,14 +353,6 @@ const CORE = {
 	recommendationEvent: "ai-core:admin:recommendation",
 	worldEvent: (resource) => `${resource}:admin:world`,
 	worldChangesCallback: (resource) => `${resource}:admin:worldChanges`
-}, LIB_UI = {
-	resource: "ai-lib",
-	notifyEvent: "ai-lib:client:notify",
-	promptPressedEvent: "ai-lib:client:promptPressed",
-	cancelProgressEvent: "ai-lib:client:cancelProgress",
-	progressForCallback: "ai-lib:progressFor",
-	progressForCancelEvent: "ai-lib:client:progressForCancel",
-	minigameForCallback: "ai-lib:minigameFor"
 }, named = new Set();
 function registerExport(name, handler) {
 	named.add(name), globalThis.exports(name, handler);
@@ -392,10 +376,6 @@ function readLocaleFile(resource, lang) {
 	let texts = {};
 	for (let [key, value] of Object.entries(parsed)) typeof value == "string" && (texts[key] = value);
 	return texts;
-}
-function createLocale() {
-	let texts = loadLocaleTexts();
-	return (key, ...args) => formatText(texts[key] ?? key, args);
 }
 function loadLocaleTexts(resource = GetCurrentResourceName()) {
 	let lang = GetConvar("ai:locale", "en"), texts = {
@@ -530,7 +510,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$16 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$18 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -544,7 +524,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$16.GetLookupValues(source);
+			list = core$18.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -809,7 +789,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$15 = resourceExport(CORE.resource);
+const core$17 = resourceExport(CORE.resource);
 var AdminPanel = class {
 	schema;
 	data = new Map();
@@ -825,10 +805,10 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelSummary", () => this.summary()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
 			count: 4,
 			windowMs: 1e4
-		} }), setImmediate(() => core$15.RegisterAdminPanel(this.resource));
+		} }), setImmediate(() => core$17.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -854,6 +834,27 @@ var AdminPanel = class {
 			schema: this.schema,
 			texts: loadLocaleTexts(),
 			data: clone(Object.fromEntries(this.data))
+		};
+	}
+	summary() {
+		let data = {}, index = {};
+		for (let [file, spec] of Object.entries(this.schema.files)) {
+			let content = this.data.get(file);
+			if (spec.kind !== "records") {
+				data[file] = clone(content ?? {});
+				continue;
+			}
+			let labels = {};
+			for (let [key, record] of Object.entries(content ?? {})) labels[key] = labelOf(record, spec.labelPath) ?? key;
+			index[file] = labels;
+		}
+		return {
+			resource: this.resource,
+			schema: this.schema,
+			texts: loadLocaleTexts(),
+			data,
+			loaded: !1,
+			index
 		};
 	}
 	apply(admin, raw) {
@@ -918,7 +919,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data), this.views.changed(file, key, value);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$15.AdminPanelChanged({
+		if (core$17.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -939,6 +940,15 @@ var AdminPanel = class {
 		this.data.set(name, data), (filled || raw === null || !file.hasSchemaRef()) && file.write(data);
 	}
 };
+function labelOf(record, path) {
+	if (!path) return null;
+	let at = record;
+	for (let part of path.split(".")) {
+		if (typeof at != "object" || !at) return null;
+		at = at[part];
+	}
+	return typeof at == "string" && at !== "" ? at : null;
+}
 // ../../../packages/lib/src/server/log.ts
 function aiLog(channel, message, options) {
 	optionalExport("ai-core")?.Log(channel, message, options);
@@ -946,29 +956,20 @@ function aiLog(channel, message, options) {
 function aiLogChannels(channels) {
 	optionalExport("ai-core")?.LogChannels(channels);
 }
-// ../../../packages/lib/src/server/notify.ts
-function notify(source, text, kind = "info", duration) {
-	let notification = {
-		text,
-		kind,
-		duration
-	};
-	emitNet(LIB_UI.notifyEvent, source, notification);
-}
 // ../../../packages/lib/src/server/inventory.ts
-const core$14 = resourceExport(CORE.resource), inventory = {
-	addItem: (inv, item, count = 1, metadata, slot) => core$14.AddItem(inv, item, count, metadata, slot),
-	removeItem: (inv, item, count = 1, metadata, slot) => core$14.RemoveItem(inv, item, count, metadata, slot),
-	getItemCount: (inv, item, metadata) => core$14.GetItemCount(inv, item, metadata),
-	hasItem: (inv, item, count = 1) => core$14.HasItem(inv, item, count),
-	canCarryItem: (inv, item, count = 1, metadata) => core$14.CanCarryItem(inv, item, count, metadata),
-	getItems: (inv) => core$14.GetItems(inv),
-	clearInventory: (inv) => core$14.ClearInventory(inv),
-	registerStash: (name, label, slots, maxWeight, jobs = []) => core$14.RegisterStash(name, label, slots, maxWeight, jobs),
-	openInventory: (source, inv) => core$14.OpenInventory(source, inv),
-	registerUsableItem: (name, handler) => core$14.RegisterUsableItem(name, handler),
-	getItemDefinition: (name) => core$14.GetItemDefinition(name)
-}, core$13 = resourceExport(CORE.resource);
+const core$16 = resourceExport(CORE.resource), inventory = {
+	addItem: (inv, item, count = 1, metadata, slot) => core$16.AddItem(inv, item, count, metadata, slot),
+	removeItem: (inv, item, count = 1, metadata, slot) => core$16.RemoveItem(inv, item, count, metadata, slot),
+	getItemCount: (inv, item, metadata) => core$16.GetItemCount(inv, item, metadata),
+	hasItem: (inv, item, count = 1) => core$16.HasItem(inv, item, count),
+	canCarryItem: (inv, item, count = 1, metadata) => core$16.CanCarryItem(inv, item, count, metadata),
+	getItems: (inv) => core$16.GetItems(inv),
+	clearInventory: (inv) => core$16.ClearInventory(inv),
+	registerStash: (name, label, slots, maxWeight, jobs = []) => core$16.RegisterStash(name, label, slots, maxWeight, jobs),
+	openInventory: (source, inv) => core$16.OpenInventory(source, inv),
+	registerUsableItem: (name, handler) => core$16.RegisterUsableItem(name, handler),
+	getItemDefinition: (name) => core$16.GetItemDefinition(name)
+}, core$15 = resourceExport(CORE.resource);
 function reindex(index, source, before, after) {
 	for (let name of before) {
 		let set = index.get(name);
@@ -996,11 +997,11 @@ var OnlinePlayers = class {
 				gangs: [],
 				gangNames: [],
 				duty: null
-			}), this.setJobs(source, core$13.GetJobs(source) ?? []), this.setGangs(source, core$13.GetGangs(source) ?? []), this.setDuty(source, core$13.GetDutyJob(source));
+			}), this.setJobs(source, core$15.GetJobs(source) ?? []), this.setGangs(source, core$15.GetGangs(source) ?? []), this.setDuty(source, core$15.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => this.setJobs(source, jobs)), on(CORE.gangsChangedEvent, (source, gangs) => this.setGangs(source, gangs)), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$13.GetLoadedSources()) {
-			let character = core$13.GetCharacter(source);
+		for (let source of core$15.GetLoadedSources()) {
+			let character = core$15.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -1069,6 +1070,20 @@ var OnlinePlayers = class {
 		let duty = this.dutyJob(source);
 		return duty !== null && jobs.includes(duty);
 	}
+	allows(source, rule) {
+		if (isPublic(rule)) return !0;
+		let min = (name) => rule.grades[name] ?? 0;
+		for (let gang of rule.gangs) {
+			let grade = this.gangGrade(source, gang);
+			if (grade !== null && grade >= min(gang)) return !0;
+		}
+		let duty = rule.onDuty ? this.dutyJob(source) : null;
+		for (let job of rule.jobs) {
+			let grade = this.jobGrade(source, job);
+			if (grade !== null && grade >= min(job) && (!rule.onDuty || duty === job)) return !0;
+		}
+		return !1;
+	}
 	countOnDuty(jobs) {
 		this.start();
 		let count = 0;
@@ -1082,7 +1097,7 @@ var OnlinePlayers = class {
 const EMPTY = new Set(), online = new OnlinePlayers();
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/proximity.ts
-const core$11 = resourceExport(CORE.resource);
+const core$13 = resourceExport(CORE.resource);
 function within(point, radius, candidates) {
 	let out = [];
 	for (let source of candidates) {
@@ -1092,7 +1107,7 @@ function within(point, radius, candidates) {
 	return out;
 }
 function playersNear(source, radius) {
-	return within(coordsOf(source), radius, [source, ...core$11.GetPlayersInScope(source)]);
+	return within(coordsOf(source), radius, [source, ...core$13.GetPlayersInScope(source)]);
 }
 createLogger(GetCurrentResourceName());
 const dropped = new Set();
@@ -1117,8 +1132,24 @@ on(CORE.playerUnloadedEvent, (source) => {
 	let settle = running.get(source);
 	settle && settle(!1);
 });
-// ../../../packages/lib/src/server/command.ts
-const resource = GetCurrentResourceName();
+// ../../../packages/lib/src/server/definitions.ts
+const core$12 = resourceExport("ai-core"), definitions = new class {
+	jobs = new Map();
+	gangs = new Map();
+	constructor() {
+		on(CORE.definitionsChangedEvent, (file, name) => {
+			typeof name == "string" && (file === "jobs" ? this.jobs.delete(name) : file === "gangs" && this.gangs.delete(name));
+		});
+	}
+	job(name) {
+		let def = this.jobs.get(name);
+		return def === void 0 && this.jobs.set(name, def = core$12.GetJobDefinition(name) ?? null), def;
+	}
+	gang(name) {
+		let def = this.gangs.get(name);
+		return def === void 0 && this.gangs.set(name, def = core$12.GetGangDefinition(name) ?? null), def;
+	}
+}(), resource = GetCurrentResourceName();
 createLogger(resource), new class {
 	list = [];
 	sent = new Map();
@@ -1232,14 +1263,13 @@ new class {
 		groups.length = kept, this.nextDue = soonest;
 	};
 }(), IsDuplicityVersion(), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
-// resource/common/locale.ts
-const Locale = createLocale();
-GetCurrentResourceName(), IsDuplicityVersion();
 // resource/common/hall.ts
 const EVENTS = {
 	offer: "ai-cityhall:offer",
 	takeJob: "ai-cityhall:takeJob",
-	buy: "ai-cityhall:buy"
+	buy: "ai-cityhall:buy",
+	showCard: "ai-cityhall:client:showCard",
+	showing: "ai-cityhall:client:showing"
 };
 function readHall(id, v) {
 	let c = record(v.coords), style = record(v.blipStyle);
@@ -1270,11 +1300,26 @@ function readSettings(raw) {
 			item: r.item.toLowerCase(),
 			price: int(r.price, 0, 0, 1e6)
 		}] : []),
-		accounts: accounts.length ? accounts : ["cash", "bank"]
+		accounts: accounts.length ? accounts : ["cash", "bank"],
+		cardSeconds: int(s.cardSeconds, 8, 2, 60)
+	};
+}
+function toIdCard(item, v, holder, seconds) {
+	let name = str(v.name, "", 64), space = name.indexOf(" "), sex = v.sex === "male" || v.sex === "female" ? v.sex : "";
+	return {
+		item: str(item, "", 48),
+		firstname: str(v.firstname, space > 0 ? name.slice(0, space) : name, 32),
+		lastname: str(v.lastname, space > 0 ? name.slice(space + 1) : "", 32),
+		birthdate: str(v.birthdate, "", 16),
+		sex,
+		nationality: str(v.nationality, "", 32),
+		citizenid: str(v.citizenid, "", 16),
+		holder,
+		seconds: int(seconds, 8, 2, 60)
 	};
 }
 // resource/server/schema.ts
-const cityhallSchema = {
+const panel = new AdminPanel({
 	title: "ADMIN_TITLE",
 	icon: "id-card",
 	files: {
@@ -1367,8 +1412,15 @@ const cityhallSchema = {
 					max: 5,
 					itemMax: 32,
 					pattern: "^[a-z0-9_]{2,32}$"
+				},
+				cardSeconds: {
+					type: "number",
+					min: 2,
+					max: 60,
+					integer: !0
 				}
-			}
+			},
+			defaults: { cardSeconds: 8 }
 		}
 	},
 	tabs: [{
@@ -1465,47 +1517,58 @@ const cityhallSchema = {
 			icon: "id-card",
 			title: "ADMIN_C_DOCS",
 			desc: "ADMIN_C_DOCS_DESC",
-			fields: [{
-				widget: "list",
-				path: "documents",
-				label: "ADMIN_F_DOCS",
-				addLabel: "ADMIN_ADD_DOC",
-				max: 20,
-				newRow: {
-					item: "id_card",
-					price: 50
+			fields: [
+				{
+					widget: "list",
+					path: "documents",
+					label: "ADMIN_F_DOCS",
+					addLabel: "ADMIN_ADD_DOC",
+					max: 20,
+					newRow: {
+						item: "id_card",
+						price: 50
+					},
+					rows: [{
+						widget: "text",
+						lookup: "item",
+						path: "item",
+						label: "ADMIN_F_ITEM",
+						placeholder: "ADMIN_P_ITEM"
+					}, {
+						widget: "number",
+						path: "price",
+						label: "ADMIN_F_PRICE",
+						min: 0,
+						max: 1e6,
+						unit: "$"
+					}]
 				},
-				rows: [{
-					widget: "text",
-					lookup: "item",
-					path: "item",
-					label: "ADMIN_F_ITEM",
-					placeholder: "ADMIN_P_ITEM"
-				}, {
+				{
+					widget: "tags",
+					lookup: "account",
+					path: "accounts",
+					label: "ADMIN_F_ACCOUNTS",
+					hint: "ADMIN_H_ACCOUNTS",
+					placeholder: "ADMIN_P_ACCOUNTS"
+				},
+				{
 					widget: "number",
-					path: "price",
-					label: "ADMIN_F_PRICE",
-					min: 0,
-					max: 1e6,
-					unit: "$"
-				}]
-			}, {
-				widget: "tags",
-				lookup: "account",
-				path: "accounts",
-				label: "ADMIN_F_ACCOUNTS",
-				hint: "ADMIN_H_ACCOUNTS",
-				placeholder: "ADMIN_P_ACCOUNTS"
-			}]
+					path: "cardSeconds",
+					label: "ADMIN_F_CARD_SECONDS",
+					hint: "ADMIN_H_CARD_SECONDS",
+					min: 2,
+					max: 60,
+					unit: "s"
+				}
+			]
 		}]
 	}]
-}, core = resourceExport("ai-core"), panel = new AdminPanel(cityhallSchema), settings = panel.view("settings", readSettings), content = {
+}), settings = panel.view("settings", readSettings), content = {
 	halls: panel.records("halls", readHall),
 	get settings() {
 		return settings.value;
 	}
 };
-aiLogChannels({ cityhall: {} });
 function atHall(source, id) {
 	let hall = content.halls.get(id);
 	return hall && isNear(source, hall, hall.radius + 2) ? hall : null;
@@ -1513,28 +1576,11 @@ function atHall(source, id) {
 const text = (v) => readText(v, 64), twoTexts = ([a, b]) => {
 	let x = text(a), y = text(b);
 	return x !== null && y !== null ? [x, y] : null;
-};
-onClientCallback(EVENTS.offer, { args: oneArg(text) }, (source, id) => atHall(source, id) ? {
-	ok: !0,
-	jobs: content.settings.jobs.flatMap((j) => {
-		let def = core.GetJobDefinition(j.job);
-		return def ? [{
-			job: j.job,
-			label: def.label
-		}] : [];
-	}),
-	documents: content.settings.documents
-} : fail("HALL_ERR_FAR")), onClientCallback(EVENTS.takeJob, {
-	args: twoTexts,
-	lock: !0
-}, (source, id, job) => {
-	if (!atHall(source, id)) return fail("HALL_ERR_FAR");
-	let offer = content.settings.jobs.find((j) => j.job === job);
-	return !offer || !core.GetJobDefinition(job) ? fail("HALL_ERR_GONE") : core.SetJob(source, job, offer.grade) ? (aiLog("cityhall", `took the job ${job}`, {
-		source,
-		metadata: { job }
-	}), { ok: !0 }) : fail("HALL_ERR_JOB");
-}), onClientCallback(EVENTS.buy, {
+}, oneText = ([a]) => {
+	let x = text(a);
+	return x === null ? null : [x];
+}, core$1 = resourceExport("ai-core");
+onClientCallback(EVENTS.buy, {
 	args: twoTexts,
 	lock: !0
 }, (source, id, item) => {
@@ -1543,19 +1589,47 @@ onClientCallback(EVENTS.offer, { args: oneArg(text) }, (source, id) => atHall(so
 	if (!doc || !character) return fail("HALL_ERR_GONE");
 	let metadata = {
 		name: `${character.firstname} ${character.lastname}`,
+		firstname: character.firstname,
+		lastname: character.lastname,
 		birthdate: character.birthdate,
-		citizenid: character.citizenid,
-		sex: character.sex
+		sex: character.sex,
+		nationality: character.nationality,
+		citizenid: character.citizenid
 	};
-	return inventory.canCarryItem(source, item, 1, metadata) ? doc.price > 0 && !content.settings.accounts.some((a) => core.RemoveMoney(source, a, doc.price, `cityhall:${item}`)) ? fail("HALL_ERR_MONEY") : (inventory.addItem(source, item, 1, metadata), { ok: !0 }) : fail("HALL_ERR_SPACE");
+	return inventory.canCarryItem(source, item, 1, metadata) ? doc.price > 0 && !content.settings.accounts.some((a) => core$1.RemoveMoney(source, a, doc.price, `cityhall:${item}`)) ? fail("HALL_ERR_MONEY") : (inventory.addItem(source, item, 1, metadata), { ok: !0 }) : fail("HALL_ERR_SPACE");
 });
 function showDocument(source, item) {
 	if (!content.settings.documents.some((d) => d.item === item.name)) return !1;
-	let m = item.metadata, text = Locale("HALL_SHOW", String(m.name ?? "?"), String(m.birthdate ?? "?"), String(m.citizenid ?? "?"));
-	for (let target of playersNear(source, 3)) notify(target, text, "info", 8e3);
-	return !1;
+	let own = item.metadata.citizenid === online.character(source)?.citizenid, card = toIdCard(item.name, item.metadata, own ? source : null, content.settings.cardSeconds);
+	for (let target of playersNear(source, 3)) emitNet(EVENTS.showCard, target, card);
+	return emitNet(EVENTS.showing, source), !1;
 }
 const registered = new Set(), registerDocs = () => {
 	for (let doc of content.settings.documents) registered.has(doc.item) || (registered.add(doc.item), inventory.registerUsableItem(doc.item, (source, item) => showDocument(source, item)));
 };
 registerDocs(), panel.onChange("settings", registerDocs);
+// resource/server/index.ts
+const core = resourceExport("ai-core");
+aiLogChannels({ cityhall: {} });
+const label = (job) => definitions.job(job)?.label;
+onClientCallback(EVENTS.offer, { args: oneText }, (source, id) => atHall(source, id) ? {
+	ok: !0,
+	jobs: content.settings.jobs.flatMap((j) => {
+		let name = label(j.job);
+		return name === void 0 ? [] : [{
+			job: j.job,
+			label: name
+		}];
+	}),
+	documents: content.settings.documents
+} : fail("HALL_ERR_FAR")), onClientCallback(EVENTS.takeJob, {
+	args: twoTexts,
+	lock: !0
+}, (source, id, job) => {
+	if (!atHall(source, id)) return fail("HALL_ERR_FAR");
+	let offer = content.settings.jobs.find((j) => j.job === job);
+	return !offer || label(job) === void 0 ? fail("HALL_ERR_GONE") : core.SetJob(source, job, offer.grade) ? (aiLog("cityhall", `took the job ${job}`, {
+		source,
+		metadata: { job }
+	}), { ok: !0 }) : fail("HALL_ERR_JOB");
+});

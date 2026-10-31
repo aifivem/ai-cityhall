@@ -71,6 +71,12 @@
         "maxLength": 32,
         "pattern": "^[a-z0-9_]{2,32}$"
       }
+    },
+    "cardSeconds": {
+      "description": "Shown document stays: Seconds a document stays on the screens of the players it was shown to (everyone within 3 m and the holder).",
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 60
     }
   },
   "required": [
