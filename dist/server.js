@@ -337,6 +337,12 @@ const CORE = {
 	pvpStateKey: "ai:pvp",
 	medicalStateKey: "ai:medical",
 	clientDeadEvent: "ai-core:client:dead",
+	mdtStateKey: "ai:mdt",
+	billsEvent: "ai-core:client:bills",
+	payBillCallback: "ai-core:payBill",
+	clientSeatbeltEvent: "ai-core:client:seatbelt",
+	stressRelayEvent: "ai-core:client:stress",
+	notifyStateKey: "ai:notify",
 	charactersCallback: "ai-core:characters",
 	createCharacterCallback: "ai-core:createCharacter",
 	deleteCharacterCallback: "ai-core:deleteCharacter",
@@ -513,7 +519,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$18 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$26 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -527,7 +533,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$18.GetLookupValues(source);
+			list = core$26.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -792,7 +798,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$17 = resourceExport(CORE.resource);
+const core$25 = resourceExport(CORE.resource);
 var AdminPanel = class {
 	schema;
 	data = new Map();
@@ -811,7 +817,7 @@ var AdminPanel = class {
 		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelData", () => this.dataSnapshot()), registerExport("AdminPanelSummary", () => this.summary()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
 			count: 4,
 			windowMs: 1e4
-		} }), setImmediate(() => core$17.RegisterAdminPanel(this.resource));
+		} }), setImmediate(() => core$25.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -925,7 +931,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data), this.views.changed(file, key, value);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$17.AdminPanelChanged({
+		if (core$25.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -963,19 +969,21 @@ function aiLogChannels(channels) {
 	optionalExport("ai-core")?.LogChannels(channels);
 }
 // ../../../packages/lib/src/server/inventory.ts
-const core$16 = resourceExport(CORE.resource), inventory = {
-	addItem: (inv, item, count = 1, metadata, slot) => core$16.AddItem(inv, item, count, metadata, slot),
-	removeItem: (inv, item, count = 1, metadata, slot) => core$16.RemoveItem(inv, item, count, metadata, slot),
-	getItemCount: (inv, item, metadata) => core$16.GetItemCount(inv, item, metadata),
-	hasItem: (inv, item, count = 1) => core$16.HasItem(inv, item, count),
-	canCarryItem: (inv, item, count = 1, metadata) => core$16.CanCarryItem(inv, item, count, metadata),
-	getItems: (inv) => core$16.GetItems(inv),
-	clearInventory: (inv) => core$16.ClearInventory(inv),
-	registerStash: (name, label, slots, maxWeight, jobs = []) => core$16.RegisterStash(name, label, slots, maxWeight, jobs),
-	openInventory: (source, inv) => core$16.OpenInventory(source, inv),
-	registerUsableItem: (name, handler) => core$16.RegisterUsableItem(name, handler),
-	getItemDefinition: (name) => core$16.GetItemDefinition(name)
-}, core$15 = resourceExport(CORE.resource);
+const core$24 = resourceExport(CORE.resource), inventory = {
+	addItem: (inv, item, count = 1, metadata, slot) => core$24.AddItem(inv, item, count, metadata, slot),
+	removeItem: (inv, item, count = 1, metadata, slot) => core$24.RemoveItem(inv, item, count, metadata, slot),
+	getItemCount: (inv, item, metadata) => core$24.GetItemCount(inv, item, metadata),
+	hasItem: (inv, item, count = 1) => core$24.HasItem(inv, item, count),
+	canCarryItem: (inv, item, count = 1, metadata) => core$24.CanCarryItem(inv, item, count, metadata),
+	getItems: (inv) => core$24.GetItems(inv),
+	clearInventory: (inv) => core$24.ClearInventory(inv),
+	registerStash: (name, label, slots, maxWeight, jobs = []) => core$24.RegisterStash(name, label, slots, maxWeight, jobs),
+	openInventory: (source, inv) => core$24.OpenInventory(source, inv),
+	registerUsableItem: (name, handler) => core$24.RegisterUsableItem(name, handler),
+	registerShop: (name, label, items) => core$24.RegisterShop(name, label, items),
+	openShop: (source, name) => core$24.OpenShop(source, name),
+	getItemDefinition: (name) => core$24.GetItemDefinition(name)
+}, core$23 = resourceExport(CORE.resource);
 function reindex(index, source, before, after) {
 	for (let name of before) {
 		let set = index.get(name);
@@ -1003,11 +1011,11 @@ var OnlinePlayers = class {
 				gangs: [],
 				gangNames: [],
 				duty: null
-			}), this.setJobs(source, core$15.GetJobs(source) ?? []), this.setGangs(source, core$15.GetGangs(source) ?? []), this.setDuty(source, core$15.GetDutyJob(source));
+			}), this.setJobs(source, core$23.GetJobs(source) ?? []), this.setGangs(source, core$23.GetGangs(source) ?? []), this.setDuty(source, core$23.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => this.setJobs(source, jobs)), on(CORE.gangsChangedEvent, (source, gangs) => this.setGangs(source, gangs)), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$15.GetLoadedSources()) {
-			let character = core$15.GetCharacter(source);
+		for (let source of core$23.GetLoadedSources()) {
+			let character = core$23.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -1104,9 +1112,9 @@ var OnlinePlayers = class {
 	}
 };
 const EMPTY = new Set(), online = new OnlinePlayers();
-resourceExport(CORE.resource);
+resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/proximity.ts
-const core$13 = resourceExport(CORE.resource);
+const core$20 = resourceExport(CORE.resource);
 function within(point, radius, candidates) {
 	let out = [];
 	for (let source of candidates) {
@@ -1116,7 +1124,7 @@ function within(point, radius, candidates) {
 	return out;
 }
 function playersNear(source, radius) {
-	return within(coordsOf(source), radius, [source, ...core$13.GetPlayersInScope(source)]);
+	return within(coordsOf(source), radius, [source, ...core$20.GetPlayersInScope(source)]);
 }
 createLogger(GetCurrentResourceName());
 const dropped = new Set();
@@ -1142,7 +1150,7 @@ on(CORE.playerUnloadedEvent, (source) => {
 	settle && settle(!1);
 });
 // ../../../packages/lib/src/server/definitions.ts
-const core$12 = resourceExport("ai-core"), definitions = new class {
+const core$19 = resourceExport("ai-core"), definitions = new class {
 	jobs = new Map();
 	gangs = new Map();
 	constructor() {
@@ -1152,11 +1160,11 @@ const core$12 = resourceExport("ai-core"), definitions = new class {
 	}
 	job(name) {
 		let def = this.jobs.get(name);
-		return def === void 0 && this.jobs.set(name, def = core$12.GetJobDefinition(name) ?? null), def;
+		return def === void 0 && this.jobs.set(name, def = core$19.GetJobDefinition(name) ?? null), def;
 	}
 	gang(name) {
 		let def = this.gangs.get(name);
-		return def === void 0 && this.gangs.set(name, def = core$12.GetGangDefinition(name) ?? null), def;
+		return def === void 0 && this.gangs.set(name, def = core$19.GetGangDefinition(name) ?? null), def;
 	}
 }(), resource = GetCurrentResourceName();
 createLogger(resource), new class {
@@ -1271,7 +1279,7 @@ new class {
 		}
 		groups.length = kept, this.nextDue = soonest;
 	};
-}(), IsDuplicityVersion(), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
+}(), IsDuplicityVersion(), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // resource/common/hall.ts
 const EVENTS = {
 	offer: "ai-cityhall:offer",
