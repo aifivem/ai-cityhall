@@ -1,13 +1,13 @@
 import {
-  cache,
+  attachProp,
   loadLocaleTexts,
   onServerEvent,
+  onStop,
   pedHeadshot,
   player,
-  requestModel,
+  playerPed,
 } from "@aicore-fivem/lib/client";
 import { readId, readInt, record } from "@aicore-fivem/lib/shared";
-import { ResourceName } from "common";
 import { EVENTS, toIdCard, type IdCard } from "common/hall";
 import type { NuiMessage } from "common/nui";
 
@@ -70,10 +70,7 @@ class CardScreen {
 
   private photo(holder: number | null) {
     if (holder === null) return Promise.resolve(null);
-    const ped =
-      holder === cache.serverId
-        ? cache.ped
-        : GetPlayerPed(GetPlayerFromServerId(holder));
+    const ped = playerPed(holder);
     return ped ? pedHeadshot(ped, false, 2000) : Promise.resolve(null);
   }
 
@@ -85,31 +82,12 @@ class CardScreen {
 
 /** The holder's own part: the card in the hand for a moment. */
 async function playShowing(): Promise<void> {
-  const model = await requestModel(SHOW_PROP).catch(() => 0);
-  const ped = cache.ped;
-  let prop = 0;
-  if (model) {
-    const [x = 0, y = 0, z = 0] = GetEntityCoords(ped, false);
-    prop = CreateObject(model, x, y, z + 0.2, false, false, false);
-    AttachEntityToEntity(
-      prop,
-      ped,
-      GetPedBoneIndex(ped, 57005),
-      0.1,
-      0.02,
-      -0.03,
-      -90,
-      170,
-      79,
-      true,
-      true,
-      false,
-      true,
-      1,
-      true,
-    );
-    SetModelAsNoLongerNeeded(model);
-  }
+  const prop = await attachProp(SHOW_PROP, {
+    bone: 57005,
+    offset: { x: 0.1, y: 0.02, z: -0.03 },
+    rotation: { x: -90, y: 170, z: 79 },
+    rotationOrder: 1,
+  });
   await player.playAnim(SHOW_ANIM.dict, SHOW_ANIM.clip, {
     blendIn: 3,
     blendOut: -1,
@@ -136,6 +114,4 @@ onServerEvent(
   (card) => void screen.show(card),
 );
 onServerEvent(EVENTS.showing, () => void playShowing());
-on("onResourceStop", (resource: string) => {
-  if (resource === ResourceName) screen.stop();
-});
+onStop(() => screen.stop());
