@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/aifivem/ai-cityhall/compare/v0.1.1...v0.1.2) (2026-10-31)
+
+
+### Miscellaneous Chores
+
+* rebuild with the current lib ([9949892](https://github.com/aifivem/ai-cityhall/commit/99498924fd4dd787fc24e5e39026a63735bcc2c2))
+
 ## [0.1.1](https://github.com/aifivem/ai-cityhall/compare/v0.1.0...v0.1.1) (2026-10-31)
 
 
