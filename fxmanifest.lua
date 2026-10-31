@@ -1,6 +1,6 @@
 name 'ai-cityhall'
 author 'TGIANN'
-version '0.1.0'
+version '0.1.0' -- x-release-please-version
 license 'GPL-3.0-only'
 description 'City hall: job center and documents'
 repository 'https://github.com/aifivem/ai-cityhall'
