@@ -7,7 +7,7 @@
   "author": {
     "name": "TGIANN"
   },
-  "repository": "github:TGIANN/ai-cityhall",
+  "repository": "github:aifivem/ai-cityhall",
   "type": "module",
   "fxDependencies": [
     "/onesync",
