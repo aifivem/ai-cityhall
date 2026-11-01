@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/aifivem/ai-cityhall/compare/v0.1.2...v0.1.3) (2026-11-01)
+
+
+### Code Refactoring
+
+* feature folders, side entries that only import, panel schema per tab ([1724adc](https://github.com/aifivem/ai-cityhall/commit/1724adc62b845bd3b25daaa131dd6d7a6e1bd53f))
+
 ## [0.1.2](https://github.com/aifivem/ai-cityhall/compare/v0.1.1...v0.1.2) (2026-10-31)
 
 
