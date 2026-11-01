@@ -10,6 +10,7 @@ import {
 import { readId, readInt, record } from "@aicore-fivem/lib/shared";
 import { EVENTS, toIdCard, type IdCard } from "common/hall";
 import type { NuiMessage } from "common/nui";
+import { NUI_LAYER } from "@aicore-fivem/shared";
 
 const send = (message: NuiMessage): void => SendNUIMessage(message);
 
@@ -115,3 +116,6 @@ onServerEvent(
 );
 onServerEvent(EVENTS.showing, () => void playShowing());
 onStop(() => screen.stop());
+
+// Stacking among NUI pages (`NUI_LAYER`): set at start, not left to load order.
+SetNuiZindex(NUI_LAYER.screen);

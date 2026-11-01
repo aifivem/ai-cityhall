@@ -17,6 +17,6 @@ City hall counters: the job center (public jobs at a start grade, through ai-cor
 
 ## Entry points
 
-- Server: offers and the job mirror `resource/server/index.ts`, buying and showing documents `server/documents.ts`, panel `server/content.ts` + `server/schema.ts`.
-- Client: counter and menu `resource/client/index.ts`, shown card and the showing animation `client/card.ts`.
+- Server: offers and taking jobs `resource/server/counter.ts`, buying and showing documents `server/documents.ts`, panel `server/content.ts` + `server/schema/` (one file per tab, `index.ts` puts them together).
+- Client: counter and menu `resource/client/hall.ts`, shown card, the showing animation and the NUI layer `client/card.ts`.
 - NUI (card overlay, no focus): `web/src/App.tsx`, `web/src/IdCard.tsx`; browser preview `bun run webdev` (mock card).
