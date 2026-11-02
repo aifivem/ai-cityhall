@@ -4,8 +4,8 @@ import {
   definitions,
   onClientCallback,
   resourceExport,
-} from "@aicore-fivem/lib/server";
-import { fail } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/server";
+import { fail } from "@aifivem/lib/shared";
 import { EVENTS } from "common/hall";
 import { atHall, content, oneText, twoTexts } from "./content";
 

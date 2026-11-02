@@ -1,5 +1,5 @@
-import { AdminPanel, isNear } from "@aicore-fivem/lib/server";
-import { readText } from "@aicore-fivem/lib/shared";
+import { AdminPanel, isNear } from "@aifivem/lib/server";
+import { readText } from "@aifivem/lib/shared";
 import { readHall, readSettings, type Hall } from "common/hall";
 import { cityhallSchema } from "./schema";
 

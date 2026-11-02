@@ -4,8 +4,8 @@ import {
   online,
   playersNear,
   resourceExport,
-} from "@aicore-fivem/lib/server";
-import { fail } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/server";
+import { fail } from "@aifivem/lib/shared";
 import { EVENTS, toIdCard } from "common/hall";
 import { atHall, content, panel, twoTexts } from "./content";
 
