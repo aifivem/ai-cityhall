@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.5](https://github.com/aifivem/ai-cityhall/compare/v0.1.4...v0.1.5) (2026-11-02)
+
+
+### Documentation
+
+* install from the release zip ([aee1681](https://github.com/aifivem/ai-cityhall/commit/aee16815a1eac05270dbb92bb71991ffb7bcb97b))
+
+
+### Miscellaneous Chores
+
+* build files are no longer in git, the release zip carries them ([9591334](https://github.com/aifivem/ai-cityhall/commit/959133492d43b00738239c9b0b52a4bf6c712108))
+
 ## [0.1.4](https://github.com/aifivem/ai-cityhall/compare/v0.1.3...v0.1.4) (2026-11-02)
 
 
