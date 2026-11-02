@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.4](https://github.com/aifivem/ai-cityhall/compare/v0.1.3...v0.1.4) (2026-11-02)
+
+
+### Bug Fixes
+
+* **build:** keep the web build in dist/ so release zips have the NUI ([c77aeba](https://github.com/aifivem/ai-cityhall/commit/c77aeba03d78d1ddd51d5ff446f4dc5e4067fe6a))
+
+
+### Code Refactoring
+
+* import the shared packages from [@aifivem](https://github.com/aifivem) ([ad4a613](https://github.com/aifivem/ai-cityhall/commit/ad4a61365fb3a7981300be90fd361519387b6c44))
+
 ## [0.1.3](https://github.com/aifivem/ai-cityhall/compare/v0.1.2...v0.1.3) (2026-11-01)
 
 
